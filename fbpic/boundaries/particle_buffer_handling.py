@@ -366,13 +366,14 @@ def add_buffers_to_particles( species, float_recv_left, float_recv_right,
     if species.use_cuda:
         shape = (species.Ntot,)
         # Reallocate empty field-on-particle arrays on the GPU
-        species.Ex = cuda.device_array( shape, dtype=np.float64 )
-        species.Ex = cuda.device_array( shape, dtype=np.float64 )
-        species.Ey = cuda.device_array( shape, dtype=np.float64 )
-        species.Ez = cuda.device_array( shape, dtype=np.float64 )
-        species.Bx = cuda.device_array( shape, dtype=np.float64 )
-        species.By = cuda.device_array( shape, dtype=np.float64 )
-        species.Bz = cuda.device_array( shape, dtype=np.float64 )
+        if not species.lightweight:
+            species.Ex = cuda.device_array( shape, dtype=np.float64 )
+            species.Ex = cuda.device_array( shape, dtype=np.float64 )
+            species.Ey = cuda.device_array( shape, dtype=np.float64 )
+            species.Ez = cuda.device_array( shape, dtype=np.float64 )
+            species.Bx = cuda.device_array( shape, dtype=np.float64 )
+            species.By = cuda.device_array( shape, dtype=np.float64 )
+            species.Bz = cuda.device_array( shape, dtype=np.float64 )
         # Reallocate empty auxiliary sorting arrays on the GPU
         species.cell_idx = cuda.device_array( shape, dtype=np.int32 )
         species.sorted_idx = cuda.device_array( shape, dtype=np.int32 )

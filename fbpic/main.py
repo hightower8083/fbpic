@@ -646,7 +646,7 @@ class Simulation(object):
                             p_rmin=0, p_rmax=np.inf,
                             uz_m=0., ux_m=0., uy_m=0.,
                             uz_th=0., ux_th=0., uy_th=0.,
-                            continuous_injection=True ):
+                            continuous_injection=True, lightweight=False ):
         """
         Create a new species (i.e. an instance of `Particles`) with
         charge `q` and mass `m`. Add it to the simulation (i.e. to the list
@@ -719,6 +719,11 @@ class Simulation(object):
         continuous_injection : bool, optional
            Whether to continuously inject the particles,
            in the case of a moving window
+
+        lightweight: bool, optional
+            Swithes to a "cheaper" gather and push routine, where fields on
+            particles are not kept in the memory. In this mode such features
+            as external field, ionization, compton scattering are disabled.
 
         Returns
         -------
@@ -806,7 +811,7 @@ class Simulation(object):
                         ux_m=ux_m, uy_m=uy_m, uz_m=uz_m,
                         ux_th=ux_th, uy_th=uy_th, uz_th=uz_th,
                         continuous_injection=continuous_injection,
-                        dz_particles=dz_particles )
+                        dz_particles=dz_particles, lightweight=lightweight )
 
         # Add it to the list of species and return it to the user
         self.ptcl.append( new_species )

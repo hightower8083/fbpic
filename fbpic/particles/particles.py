@@ -139,8 +139,9 @@ class Particles(object) :
             `dz_particles` needs to be explicitly passed.
 
         lightweight: bool, optional
-            Swithes to a cheaper gather and push routine, which disables such
-            features as external field, ionization, compton scattering
+            Swithes to a "cheaper" gather and push routine, where fields on
+            particles are not kept in the memory. In this mode such features
+            as external field, ionization, compton scattering are disabled.
         """
         # Define whether or not to use the GPU
         self.use_cuda = use_cuda
