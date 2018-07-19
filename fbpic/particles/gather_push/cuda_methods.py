@@ -7,6 +7,7 @@ It defines the field gathering methods linear and cubic order shapes
 on the GPU using CUDA.
 """
 from numba import cuda, float64, int64
+from scipy.constants import c, e
 import math
 # Import inline functions
 from .inline_functions import \
@@ -16,6 +17,7 @@ add_linear_gather_for_mode = cuda.jit( add_linear_gather_for_mode,
                                         device=True, inline=True )
 add_cubic_gather_for_mode = cuda.jit( add_cubic_gather_for_mode,
                                         device=True, inline=True )
+push_p_vay = cuda.jit( push_p_vay, device=True, inline=True )
 
 # -----------------------
 # Field gathering linear
@@ -24,7 +26,7 @@ add_cubic_gather_for_mode = cuda.jit( add_cubic_gather_for_mode,
 @cuda.jit
 def gather_push_gpu_linear(x, y, z, ux, uy, uz,
                            inv_gamma, q, m, Ntot, dt_p,
-                           dt_x, x_push, y_push, z_push
+                           dt_x, x_push, y_push, z_push,
                            invdz, zmin, Nz,
                            invdr, rmin, Nr,
                            Er_m0, Et_m0, Ez_m0,

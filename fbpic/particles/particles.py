@@ -174,7 +174,7 @@ class Particles(object) :
         self.w = w
 
         # Initialize the fields array (at the positions of the particles)
-        if not lightweight:
+        if not self.lightweight:
             self.Ez = np.zeros( Ntot )
             self.Ex = np.zeros( Ntot )
             self.Ey = np.zeros( Ntot )
@@ -246,7 +246,7 @@ class Particles(object) :
 
             # Copy arrays on the GPU for the field
             # gathering and the particle push
-            if not lightweight:
+            if not self.lightweight:
                 self.Ex = cuda.to_device(self.Ex)
                 self.Ey = cuda.to_device(self.Ey)
                 self.Ez = cuda.to_device(self.Ez)
@@ -288,7 +288,7 @@ class Particles(object) :
 
             # Copy arrays on the CPU for the field
             # gathering and the particle push
-            if not lightweight:
+            if not self.lightweight:
                 self.Ex = self.Ex.copy_to_host()
                 self.Ey = self.Ey.copy_to_host()
                 self.Ez = self.Ez.copy_to_host()
@@ -1065,7 +1065,7 @@ class Particles(object) :
                 if Nm == 2:
                     # Optimized version for 2 modes
                     gather_push_gpu_linear[dim_grid_1d, dim_block_1d](
-                         self.x, self.y, self.z, self.ux, self.uy, self.uz
+                         self.x, self.y, self.z, self.ux, self.uy, self.uz,
                          self.inv_gamma, self.q, self.m, self.Ntot, self.dt,
                          dt, x_push, y_push, z_push,
                          grid[0].invdz, grid[0].zmin, grid[0].Nz,

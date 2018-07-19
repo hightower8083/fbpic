@@ -392,7 +392,7 @@ class Simulation(object):
 
             for species in ptcl:
                 if species.lightweight:
-                    species.gather_and_push(fld.interp, self.time+0.5*self.dt, 0.5*dt)
+                    species.gather_push(fld.interp, self.time+0.5*self.dt, 0.5*dt)
                 else:
                     # Gather the fields from the grid at t = n dt
                     species.gather( fld.interp )

@@ -6,6 +6,7 @@ This file is part of the Fourier-Bessel Particle-In-Cell code (FB-PIC)
 It defines inline functions that are compiled for both GPU and CPU, and
 used in the gathering kernels.
 """
+import math
 def add_linear_gather_for_mode( m,
     Fr, Ft, Fz, exptheta_m, Fr_grid, Ft_grid, Fz_grid,
     iz_lower, iz_upper, ir_lower, ir_upper,
@@ -186,7 +187,6 @@ def add_cubic_gather_for_mode( m,
 
     return(Fr, Ft, Fz)
 
-@cuda.jit(device=True, inline=True)
 def push_p_vay( ux_i, uy_i, uz_i, inv_gamma_i,
     Ex, Ey, Ez, Bx, By, Bz, econst, bconst ):
     """
