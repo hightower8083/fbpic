@@ -91,7 +91,7 @@ class ExternalField( object ):
             self.gpu_func = gpu_compiler( field_func )
 
 
-    def apply_expression( self, ptcl, t ):
+    def apply_expression( self, species, t ):
         """
         Apply the external field function to the particles
 
@@ -100,29 +100,28 @@ class ExternalField( object ):
 
         Parameters
         ----------
-        ptcl: a list a Particles objects
+        species: a Particles object
             The particles on which the external fields will be applied
 
         t: float (seconds)
             The time in the simulation
         """
-        for species in ptcl:
 
-            # If any species was specified at initialization,
-            # apply the field only on this species
-            if (self.species is None) or (species is self.species):
+        # If any species was specified at initialization,
+        # apply the field only on this species
+        if (self.species is None) or (species is self.species):
 
-                # Only apply the field if there are macroparticles
-                # in this species
-                if species.Ntot > 0:
+            # Only apply the field if there are macroparticles
+            # in this species
+            if species.Ntot > 0:
 
-                    field = getattr( species, self.fieldtype )
+                field = getattr( species, self.fieldtype )
 
-                    if type( field ) is np.ndarray:
-                        # Call the CPU function
-                        self.cpu_func( field, species.x, species.y, species.z,
-                              t, self.amplitude, self.length_scale, out=field )
-                    else:
-                        # Call the GPU function
-                        self.gpu_func( field, species.x, species.y, species.z,
-                              t, self.amplitude, self.length_scale, out=field )
+                if type( field ) is np.ndarray:
+                    # Call the CPU function
+                    self.cpu_func( field, species.x, species.y, species.z,
+                          t, self.amplitude, self.length_scale, out=field )
+                else:
+                    # Call the GPU function
+                    self.gpu_func( field, species.x, species.y, species.z,
+                          t, self.amplitude, self.length_scale, out=field )

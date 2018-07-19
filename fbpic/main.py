@@ -390,20 +390,23 @@ class Simulation(object):
             # Main PIC iteration
             # ------------------
 
-            # Gather the fields from the grid at t = n dt
             for species in ptcl:
-                species.gather( fld.interp )
-            # Apply the external fields at t = n dt
-            for ext_field in self.external_fields:
-                ext_field.apply_expression( self.ptcl, self.time )
+                if species.lightweight:
+                    species.gather_and_push(fld.interp, self.time+0.5*self.dt, 0.5*dt)
+                else:
+                    # Gather the fields from the grid at t = n dt
+                    species.gather( fld.interp )
 
-            # Push the particles' positions and velocities to t = (n+1/2) dt
-            if move_momenta:
-                for species in ptcl:
-                    species.push_p( self.time + 0.5*self.dt )
-            if move_positions:
-                for species in ptcl:
-                    species.push_x( 0.5*dt )
+                    # Apply the external fields at t = n dt
+                    for ext_field in self.external_fields:
+                        ext_field.apply_expression( species, self.time )
+
+                    # Push the particles' positions and velocities to t = (n+1/2) dt
+                    if move_momenta:
+                        species.push_p( self.time + 0.5*self.dt )
+                    if move_positions:
+                        species.push_x( 0.5*dt )
+
             # Get positions/velocities for antenna particles at t = (n+1/2) dt
             for antenna in self.laser_antennas:
                 antenna.update_v( self.time + 0.5*dt )
