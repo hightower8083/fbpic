@@ -361,34 +361,30 @@ def add_buffers_to_particles( species, float_recv_left, float_recv_right,
         add_buffers_cpu( species, float_recv_left, float_recv_right,
                                 uint_recv_left, uint_recv_right )
 
-    # Reallocate the particles auxiliary arrays. This needs to be done,
-    # as the total number of particles in this domain has changed.
+    # Reallocate empty auxiliary sorting arrays on the GPU
     if species.use_cuda:
         shape = (species.Ntot,)
-        # Reallocate empty field-on-particle arrays on the GPU
-        if not species.lightweight:
-            species.Ex = cuda.device_array( shape, dtype=np.float64 )
-            species.Ex = cuda.device_array( shape, dtype=np.float64 )
-            species.Ey = cuda.device_array( shape, dtype=np.float64 )
-            species.Ez = cuda.device_array( shape, dtype=np.float64 )
-            species.Bx = cuda.device_array( shape, dtype=np.float64 )
-            species.By = cuda.device_array( shape, dtype=np.float64 )
-            species.Bz = cuda.device_array( shape, dtype=np.float64 )
-        # Reallocate empty auxiliary sorting arrays on the GPU
         species.cell_idx = cuda.device_array( shape, dtype=np.int32 )
         species.sorted_idx = cuda.device_array( shape, dtype=np.int32 )
         species.sorting_buffer = cuda.device_array( shape, dtype=np.float64 )
         if species.n_integer_quantities > 0:
             species.int_sorting_buffer = \
                 cuda.device_array( shape, dtype=np.uint64 )
-    else:
-        # Reallocate empty field-on-particle arrays on the CPU
-        species.Ex = np.empty(species.Ntot, dtype=np.float64)
-        species.Ey = np.empty(species.Ntot, dtype=np.float64)
-        species.Ez = np.empty(species.Ntot, dtype=np.float64)
-        species.Bx = np.empty(species.Ntot, dtype=np.float64)
-        species.By = np.empty(species.Ntot, dtype=np.float64)
-        species.Bz = np.empty(species.Ntot, dtype=np.float64)
+
+    if not species.lightweight:
+        # Reallocate empty field-on-particle arrays. This needs to be done,
+        # as the total number of particles in this domain has changed.
+        shape = (species.Ntot,)
+        if species.use_cuda:
+            create_empty = cuda.device_array
+        else:
+            create_empty = np.empty
+        species.Ex = create_empty( shape, dtype=np.float64 )
+        species.Ey = create_empty( shape, dtype=np.float64 )
+        species.Ez = create_empty( shape, dtype=np.float64 )
+        species.Bx = create_empty( shape, dtype=np.float64 )
+        species.By = create_empty( shape, dtype=np.float64 )
+        species.Bz = create_empty( shape, dtype=np.float64 )
 
     # The particles are unsorted after adding new particles.
     species.sorted = False

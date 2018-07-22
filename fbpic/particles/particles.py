@@ -43,7 +43,7 @@ if cuda_installed:
         gather_field_gpu_cubic
     from .gathering.cuda_methods_one_mode import erase_eb_cuda, \
         gather_field_gpu_linear_one_mode, gather_field_gpu_cubic_one_mode
-    from .gather_push.cuda_methods import gather_push_gpu_linear
+    from .lightweight.cuda_methods import gather_push_gpu_linear
     from .utilities.cuda_sorting import write_sorting_buffer, \
         get_cell_idx_per_particle, sort_particles_per_cell, \
         prefill_prefix_sum, incl_prefix_sum

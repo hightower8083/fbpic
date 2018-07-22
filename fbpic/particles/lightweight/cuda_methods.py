@@ -10,13 +10,16 @@ from numba import cuda, float64, int64
 from scipy.constants import c, e
 import math
 # Import inline functions
-from .inline_functions import \
-    add_linear_gather_for_mode, add_cubic_gather_for_mode, push_p_vay
+from ..gathering.inline_functions import \
+    add_linear_gather_for_mode
+from ..push.inline_functions import push_p_vay
+
+
 # Compile the inline functions for GPU
 add_linear_gather_for_mode = cuda.jit( add_linear_gather_for_mode,
                                         device=True, inline=True )
-add_cubic_gather_for_mode = cuda.jit( add_cubic_gather_for_mode,
-                                        device=True, inline=True )
+#add_cubic_gather_for_mode = cuda.jit( add_cubic_gather_for_mode,
+#                                        device=True, inline=True )
 push_p_vay = cuda.jit( push_p_vay, device=True, inline=True )
 
 # -----------------------
