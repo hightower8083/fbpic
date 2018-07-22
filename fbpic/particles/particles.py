@@ -24,7 +24,8 @@ from .gathering.threading_methods_one_mode import erase_eb_numba, \
 from .deposition.threading_methods import \
         deposit_rho_numba_linear, deposit_rho_numba_cubic, \
         deposit_J_numba_linear, deposit_J_numba_cubic
-from .lightweight.numba_methods import gather_push_numba_linear
+from .lightweight.numba_methods import gather_push_numba_linear, \
+        gather_push_numba_cubic
 
 # Check if threading is enabled
 from fbpic.utils.threading import nthreads, get_chunk_indices
@@ -44,7 +45,8 @@ if cuda_installed:
         gather_field_gpu_cubic
     from .gathering.cuda_methods_one_mode import erase_eb_cuda, \
         gather_field_gpu_linear_one_mode, gather_field_gpu_cubic_one_mode
-    from .lightweight.cuda_methods import gather_push_gpu_linear
+    from .lightweight.cuda_methods import gather_push_gpu_linear, \
+        gather_push_gpu_cubic
     from .utilities.cuda_sorting import write_sorting_buffer, \
         get_cell_idx_per_particle, sort_particles_per_cell, \
         prefill_prefix_sum, incl_prefix_sum
@@ -1109,19 +1111,18 @@ class Particles(object) :
                             self.Ex, self.Ey, self.Ez,
                             self.Bx, self.By, self.Bz)
             elif self.particle_shape == 'cubic':
-                pass
                 if Nm == 2:
                     # Optimized version for 2 modes
-                    gather_field_gpu_cubic[dim_grid_1d, dim_block_1d](
-                         self.x, self.y, self.z,
+                    gather_push_gpu_cubic[dim_grid_1d, dim_block_1d](
+                         self.x, self.y, self.z, self.ux, self.uy, self.uz,
+                         self.inv_gamma, self.q, self.m, self.Ntot, self.dt,
+                         dt, x_push, y_push, z_push,
                          grid[0].invdz, grid[0].zmin, grid[0].Nz,
                          grid[0].invdr, grid[0].rmin, grid[0].Nr,
                          grid[0].Er, grid[0].Et, grid[0].Ez,
                          grid[1].Er, grid[1].Et, grid[1].Ez,
                          grid[0].Br, grid[0].Bt, grid[0].Bz,
-                         grid[1].Br, grid[1].Bt, grid[1].Bz,
-                         self.Ex, self.Ey, self.Ez,
-                         self.Bx, self.By, self.Bz)
+                         grid[1].Br, grid[1].Bt, grid[1].Bz)
                 else:
                     # Generic version for arbitrary number of modes
                     erase_eb_cuda[dim_grid_1d, dim_block_1d](
@@ -1179,17 +1180,17 @@ class Particles(object) :
                 ptcl_chunk_indices = get_chunk_indices(self.Ntot, nthreads)
                 if Nm == 2:
                     # Optimized version for 2 modes
-                    gather_field_numba_cubic(
-                        self.x, self.y, self.z,
-                        grid[0].invdz, grid[0].zmin, grid[0].Nz,
-                        grid[0].invdr, grid[0].rmin, grid[0].Nr,
-                        grid[0].Er, grid[0].Et, grid[0].Ez,
-                        grid[1].Er, grid[1].Et, grid[1].Ez,
-                        grid[0].Br, grid[0].Bt, grid[0].Bz,
-                        grid[1].Br, grid[1].Bt, grid[1].Bz,
-                        self.Ex, self.Ey, self.Ez,
-                        self.Bx, self.By, self.Bz,
-                        nthreads, ptcl_chunk_indices )
+                    gather_push_numba_cubic(self.x, self.y, self.z,
+                         self.ux, self.uy, self.uz,
+                         self.inv_gamma, self.q, self.m, self.Ntot, self.dt,
+                         dt, x_push, y_push, z_push,
+                         grid[0].invdz, grid[0].zmin, grid[0].Nz,
+                         grid[0].invdr, grid[0].rmin, grid[0].Nr,
+                         grid[0].Er, grid[0].Et, grid[0].Ez,
+                         grid[1].Er, grid[1].Et, grid[1].Ez,
+                         grid[0].Br, grid[0].Bt, grid[0].Bz,
+                         grid[1].Br, grid[1].Bt, grid[1].Bz,
+                         nthreads, ptcl_chunk_indices)
                 else:
                     # Generic version for arbitrary number of modes
                     erase_eb_numba( self.Ex, self.Ey, self.Ez,
