@@ -416,6 +416,9 @@ class Particles(object) :
             Increasing this ratio increases the number of photon macroparticles
             that will be emitted and therefore improves statistics.
         """
+        if self.lightweight:
+                raise ValueError("Lightweight species cannot perform"
+                                 "Compton scattering")
         self.compton_scatterer = ComptonScatterer(
             self, target_species, laser_energy, laser_wavelength,
             laser_waist, laser_ctau, laser_initial_z0,
@@ -462,6 +465,9 @@ class Particles(object) :
             The ionization level at which the macroparticles are initially
             (e.g. 0 for initially neutral atoms)
         """
+        if self.lightweight:
+                raise ValueError("Lightweight species cannot be ionizable")
+
         # Initialize the ionizer module
         self.ionizer = Ionizer( element, self, target_species, level_start )
         # Set charge to the elementary charge e (assumed by deposition kernel,
