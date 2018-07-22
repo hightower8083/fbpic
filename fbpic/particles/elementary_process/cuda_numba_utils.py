@@ -78,9 +78,12 @@ def reallocate_and_copy_old( species, use_cuda, old_Ntot, new_Ntot ):
     if data_on_gpu:
         ptcl_grid_1d, ptcl_block_1d = cuda_tpb_bpg_1d( old_Ntot )
 
+    # Define list of particle attributes to be copied
+    attr_list = ['x', 'y', 'z', 'ux', 'uy', 'uz', 'w', 'inv_gamma']
+    if not species.lightweight:
+        attr_list += ['Ex', 'Ey', 'Ez', 'Bx', 'By', 'Bz']
     # Iterate over particle attributes and copy the old particles
-    for attr in ['x', 'y', 'z', 'ux', 'uy', 'uz', 'w', 'inv_gamma',
-                    'Ex', 'Ey', 'Ez', 'Bx', 'By', 'Bz']:
+    for attr in attr_list:
         old_array = getattr(species, attr)
         new_array = allocate_empty( new_Ntot, data_on_gpu, dtype=np.float64 )
         if data_on_gpu:

@@ -34,6 +34,7 @@ from scipy.constants import c, e, m_e, physical_constants
 from scipy.special import gamma
 from .read_atomic_data import get_ionization_energies
 from .numba_methods import ionize_ions_numba, copy_ionized_electrons_numba
+from ...lightweight.numba_methods import copy_ionized_electrons_numba_lightweight
 from ..cuda_numba_utils import allocate_empty, reallocate_and_copy_old, \
                                 perform_cumsum_2d, generate_new_ids
 
@@ -44,6 +45,9 @@ if cuda_installed:
     from pyculib.rand import PRNG
     from fbpic.utils.cuda import cuda_tpb_bpg_1d
     from .cuda_methods import ionize_ions_cuda, copy_ionized_electrons_cuda
+    from ...lightweight.cuda_methods import copy_ionized_electrons_cuda_lightweight
+
+
 
 class Ionizer(object):
     """
@@ -279,29 +283,49 @@ class Ionizer(object):
             reallocate_and_copy_old( elec, use_cuda, old_Ntot, new_Ntot )
             # Create the new electrons from ionization (one thread per batch)
             if use_cuda:
-                copy_ionized_electrons_cuda[ batch_grid_1d, batch_block_1d ](
-                    N_batch, self.batch_size, old_Ntot, ion.Ntot,
-                    d_cumulative_n_ionized, ionized_from,
-                    i_level, self.store_electrons_per_level,
-                    elec.x, elec.y, elec.z, elec.inv_gamma,
-                    elec.ux, elec.uy, elec.uz, elec.w,
-                    elec.Ex, elec.Ey, elec.Ez, elec.Bx, elec.By, elec.Bz,
-                    ion.x, ion.y, ion.z, ion.inv_gamma,
-                    ion.ux, ion.uy, ion.uz, ion.w,
-                    ion.Ex, ion.Ey, ion.Ez, ion.Bx, ion.By, ion.Bz )
+                if elec.lightweight:
+                    copy_ionized_electrons_cuda_lightweight[batch_grid_1d, batch_block_1d](
+                        N_batch, self.batch_size, old_Ntot, ion.Ntot,
+                        d_cumulative_n_ionized, ionized_from,
+                        i_level, self.store_electrons_per_level,
+                        elec.x, elec.y, elec.z, elec.inv_gamma,
+                        elec.ux, elec.uy, elec.uz, elec.w,
+                        ion.x, ion.y, ion.z, ion.inv_gamma,
+                        ion.ux, ion.uy, ion.uz, ion.w)
+                else:
+                    copy_ionized_electrons_cuda[batch_grid_1d, batch_block_1d](
+                        N_batch, self.batch_size, old_Ntot, ion.Ntot,
+                        d_cumulative_n_ionized, ionized_from,
+                        i_level, self.store_electrons_per_level,
+                        elec.x, elec.y, elec.z, elec.inv_gamma,
+                        elec.ux, elec.uy, elec.uz, elec.w,
+                        elec.Ex, elec.Ey, elec.Ez, elec.Bx, elec.By, elec.Bz,
+                        ion.x, ion.y, ion.z, ion.inv_gamma,
+                        ion.ux, ion.uy, ion.uz, ion.w,
+                        ion.Ex, ion.Ey, ion.Ez, ion.Bx, ion.By, ion.Bz )
                 # Mark the new electrons as unsorted
                 elec.sorted = False
             else:
-                copy_ionized_electrons_numba(
-                    N_batch, self.batch_size, old_Ntot, ion.Ntot,
-                    cumulative_n_ionized, ionized_from,
-                    i_level, self.store_electrons_per_level,
-                    elec.x, elec.y, elec.z, elec.inv_gamma,
-                    elec.ux, elec.uy, elec.uz, elec.w,
-                    elec.Ex, elec.Ey, elec.Ez, elec.Bx, elec.By, elec.Bz,
-                    ion.x, ion.y, ion.z, ion.inv_gamma,
-                    ion.ux, ion.uy, ion.uz, ion.w,
-                    ion.Ex, ion.Ey, ion.Ez, ion.Bx, ion.By, ion.Bz )
+                if elec.lightweight:
+                    copy_ionized_electrons_numba_lightweight(
+                        N_batch, self.batch_size, old_Ntot, ion.Ntot,
+                        cumulative_n_ionized, ionized_from,
+                        i_level, self.store_electrons_per_level,
+                        elec.x, elec.y, elec.z, elec.inv_gamma,
+                        elec.ux, elec.uy, elec.uz, elec.w,
+                        ion.x, ion.y, ion.z, ion.inv_gamma,
+                        ion.ux, ion.uy, ion.uz, ion.w)
+                else:
+                    copy_ionized_electrons_numba(
+                        N_batch, self.batch_size, old_Ntot, ion.Ntot,
+                        cumulative_n_ionized, ionized_from,
+                        i_level, self.store_electrons_per_level,
+                        elec.x, elec.y, elec.z, elec.inv_gamma,
+                        elec.ux, elec.uy, elec.uz, elec.w,
+                        elec.Ex, elec.Ey, elec.Ez, elec.Bx, elec.By, elec.Bz,
+                        ion.x, ion.y, ion.z, ion.inv_gamma,
+                        ion.ux, ion.uy, ion.uz, ion.w,
+                        ion.Ex, ion.Ey, ion.Ez, ion.Bx, ion.By, ion.Bz )
 
             # If the electrons are tracked, generate new ids
             # (on GPU or GPU depending on `use_cuda`)

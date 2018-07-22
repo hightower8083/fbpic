@@ -1,46 +1,43 @@
 # Copyright 2016, FBPIC contributors
-# Authors: Remi Lehe, Manuel Kirchen, Kevin Peters, Igor Andriyash
+# Authors: Remi Lehe, Manuel Kirchen
 # License: 3-Clause-BSD-LBNL
 """
 This file is part of the Fourier-Bessel Particle-In-Cell code (FB-PIC)
-It defines the methods specific for gathering, pushing and copying the 
-lightweight species on the GPU using CUDA.
+It defines numba methods that are used in particle ionization for the
+case of lightweight electrons
+
+Apart from synthactic, this file is very close to cuda_methods.py
 """
-from numba import cuda
+import numba
 from scipy.constants import c, e
 import math
+import numpy as np
+from fbpic.utils.threading import njit_parallel, prange
 # Import inline functions
 from ..gathering.inline_functions import \
     add_linear_gather_for_mode, add_cubic_gather_for_mode
 from ..push.inline_functions import push_p_vay
 from .inline_functions import copy_ionized_electrons_batch_lightweight
 
+# Compile the inline functions for CPU
+add_linear_gather_for_mode = numba.njit( add_linear_gather_for_mode )
+add_cubic_gather_for_mode = numba.njit( add_cubic_gather_for_mode )
+push_p_vay = numba.njit( push_p_vay )
+copy_ionized_electrons_batch_lightweight = numba.njit( \
+                            copy_ionized_electrons_batch_lightweight )
 
-# Compile the inline functions for GPU
-add_linear_gather_for_mode = cuda.jit( add_linear_gather_for_mode,
-                                        device=True, inline=True )
-add_cubic_gather_for_mode = cuda.jit( add_cubic_gather_for_mode,
-                                        device=True, inline=True )
-push_p_vay = cuda.jit( push_p_vay, device=True, inline=True )
-copy_ionized_electrons_batch_lightweight = cuda.jit( \
-         copy_ionized_electrons_batch_lightweight, device=True, inline=True )
-
-# -----------------------
-# Field gathering linear
-# -----------------------
-
-@cuda.jit
-def gather_push_gpu_linear(x, y, z, ux, uy, uz,
-                           inv_gamma, q, m, Ntot, dt_p,
-                           dt_x, x_push, y_push, z_push,
-                           invdz, zmin, Nz,
-                           invdr, rmin, Nr,
-                           Er_m0, Et_m0, Ez_m0,
-                           Er_m1, Et_m1, Ez_m1,
-                           Br_m0, Bt_m0, Bz_m0,
-                           Br_m1, Bt_m1, Bz_m1,):
+@njit_parallel
+def gather_push_numba_linear(x, y, z, ux, uy, uz,
+                             inv_gamma, q, m, Ntot, dt_p,
+                             dt_x, x_push, y_push, z_push,
+                             invdz, zmin, Nz,
+                             invdr, rmin, Nr,
+                             Er_m0, Et_m0, Ez_m0,
+                             Er_m1, Et_m1, Ez_m1,
+                             Br_m0, Bt_m0, Bz_m0,
+                             Br_m1, Bt_m1, Bz_m1 ):
     """
-    - Gathering of the fields (E and B) using numba on the GPU.
+    - Gathering of the fields (E and B) using numba with multi-threading.
       Iterates over the particles, calculates the weighted amount
       of fields acting on each particle based on its shape (linear).
       Fields are gathered in cylindrical coordinates and then
@@ -103,17 +100,14 @@ def gather_push_gpu_linear(x, y, z, ux, uy, uz,
 
     Br_m1, Bt_m1, Bz_m1 : 2darray of complexs
         The magnetic fields on the interpolation grid for the mode 1
-
     """
-    # Set few constants
+    # Set a few constants
     econst = q*dt_p/(m*c)
     bconst = 0.5*q*dt_p/m
-    cdt = c*dt_x
-    # Get the 1D CUDA grid
-    i = cuda.grid(1)
+    chdt = c*dt_x
+
     # Deposit the field per cell in parallel
-    # (for threads < number of particles)
-    if i < x.shape[0]:
+    for i in prange(x.shape[0]):
         # Preliminary arrays for the cylindrical conversion
         # --------------------------------------------
         # Position
@@ -134,7 +128,7 @@ def gather_push_gpu_linear(x, y, z, ux, uy, uz,
         exptheta_m1 = cos - 1.j*sin
 
         # Get linear weights for the deposition
-        # --------------------------------------------
+        # -------------------------------------
         # Positions of the particles, in the cell unit
         r_cell =  invdr*(rj - rmin) - 0.5
         z_cell =  invdz*(zj - zmin) - 0.5
@@ -152,7 +146,7 @@ def gather_push_gpu_linear(x, y, z, ux, uy, uz,
         Sr_guard = 0.
 
         # Treat the boundary conditions
-        # --------------------------------------------
+        # -----------------------------
         # guard cells in lower r
         if ir_lower < 0:
             Sr_guard = Sr_lower
@@ -227,33 +221,33 @@ def gather_push_gpu_linear(x, y, z, ux, uy, uz,
         By = sin*Fr + cos*Ft
         Bz = Fz
 
-        # Pushing particle's momenta
-        ux[i], uy[i], uz[i], inv_gamma[i] = push_p_vay(ux[i], uy[i], uz[i],
-            inv_gamma[i], Ex, Ey, Ez, Bx, By, Bz, econst, bconst)
+        # Loop over the particles (in parallel if threading is installed)
+        ux[i], uy[i], uz[i], inv_gamma[i] = push_p_vay(
+            ux[i], uy[i], uz[i], inv_gamma[i],
+            Ex, Ey, Ez, Bx, By, Bz, econst, bconst )
 
-        # Pushing particle's position
-        cdt = c*dt_x
-        inv_g = inv_gamma[i]
-        x[i] += cdt*x_push*inv_g*ux[i]
-        y[i] += cdt*y_push*inv_g*uy[i]
-        z[i] += cdt*z_push*inv_g*uz[i]
+        # Particle push (in parallel if threading is installed)
+        x[i] += chdt * inv_gamma[i] * x_push * ux[i]
+        y[i] += chdt * inv_gamma[i] * y_push * uy[i]
+        z[i] += chdt * inv_gamma[i] * z_push * uz[i]
 
-@cuda.jit
-def copy_ionized_electrons_cuda_lightweight(
+    return x, y, z, ux, uy, uz, inv_gamma
+
+@njit_parallel
+def copy_ionized_electrons_numba_lightweight(
     N_batch, batch_size, elec_old_Ntot, ion_Ntot,
     cumulative_n_ionized, ionized_from,
     i_level, store_electrons_per_level,
     elec_x, elec_y, elec_z, elec_inv_gamma,
     elec_ux, elec_uy, elec_uz, elec_w,
     ion_x, ion_y, ion_z, ion_inv_gamma,
-    ion_ux, ion_uy, ion_uz, ion_w ):
+    ion_ux, ion_uy, ion_uz, ion_w):
     """
     Create the new lightweight electrons by copying the properties (position,
     momentum, etc) of the ions that they originate from.
     """
-    # Select the current batch
-    i_batch = cuda.grid(1)
-    if i_batch < N_batch:
+    #  Loop over batches of particles (in parallel, if threading is enabled)
+    for i_batch in prange( N_batch ):
         copy_ionized_electrons_batch_lightweight(
             i_batch, batch_size, elec_old_Ntot, ion_Ntot,
             cumulative_n_ionized, ionized_from,
@@ -262,3 +256,6 @@ def copy_ionized_electrons_cuda_lightweight(
             elec_ux, elec_uy, elec_uz, elec_w,
             ion_x, ion_y, ion_z, ion_inv_gamma,
             ion_ux, ion_uy, ion_uz, ion_w)
+
+    return( elec_x, elec_y, elec_z, elec_inv_gamma,
+        elec_ux, elec_uy, elec_uz, elec_w)
