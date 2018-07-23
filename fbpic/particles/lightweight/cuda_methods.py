@@ -7,6 +7,7 @@ It defines the methods specific for gathering, pushing and copying the
 lightweight species on the GPU using CUDA.
 """
 from numba import cuda
+from numba import float64, int64
 from scipy.constants import c, e
 import math
 # Import inline functions
