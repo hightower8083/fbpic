@@ -1095,21 +1095,9 @@ class Particles(object) :
                          grid[0].Br, grid[0].Bt, grid[0].Bz,
                          grid[1].Br, grid[1].Bt, grid[1].Bz)
                 else:
-                    pass
-                    # Generic version for arbitrary number of modes
-                    erase_eb_cuda[dim_grid_1d, dim_block_1d](
-                                    self.Ex, self.Ey, self.Ez,
-                                    self.Bx, self.By, self.Bz, self.Ntot )
-                    for m in range(Nm):
-                        gather_field_gpu_linear_one_mode[
-                            dim_grid_1d, dim_block_1d](
-                            self.x, self.y, self.z,
-                            grid[m].invdz, grid[m].zmin, grid[m].Nz,
-                            grid[m].invdr, grid[m].rmin, grid[m].Nr,
-                            grid[m].Er, grid[m].Et, grid[m].Ez,
-                            grid[m].Br, grid[m].Bt, grid[m].Bz, m,
-                            self.Ex, self.Ey, self.Ez,
-                            self.Bx, self.By, self.Bz)
+                    raise NotImplementedError( "Lightweight species routines "
+                                               "for arbitrary modes number are "
+                                               "not yet implemented." )
             elif self.particle_shape == 'cubic':
                 if Nm == 2:
                     # Optimized version for 2 modes
@@ -1124,20 +1112,9 @@ class Particles(object) :
                          grid[0].Br, grid[0].Bt, grid[0].Bz,
                          grid[1].Br, grid[1].Bt, grid[1].Bz)
                 else:
-                    # Generic version for arbitrary number of modes
-                    erase_eb_cuda[dim_grid_1d, dim_block_1d](
-                                    self.Ex, self.Ey, self.Ez,
-                                    self.Bx, self.By, self.Bz, self.Ntot )
-                    for m in range(Nm):
-                        gather_field_gpu_cubic_one_mode[
-                            dim_grid_1d, dim_block_1d](
-                            self.x, self.y, self.z,
-                            grid[m].invdz, grid[m].zmin, grid[m].Nz,
-                            grid[m].invdr, grid[m].rmin, grid[m].Nr,
-                            grid[m].Er, grid[m].Et, grid[m].Ez,
-                            grid[m].Br, grid[m].Bt, grid[m].Bz, m,
-                            self.Ex, self.Ey, self.Ez,
-                            self.Bx, self.By, self.Bz)
+                    raise NotImplementedError( "Lightweight species routines "
+                                               "for arbitrary modes number are "
+                                               "not yet implemented." )
             else:
                 raise ValueError("`particle_shape` should be either \
                                   'linear' or 'cubic' \
@@ -1160,20 +1137,9 @@ class Particles(object) :
                          grid[0].Br, grid[0].Bt, grid[0].Bz,
                          grid[1].Br, grid[1].Bt, grid[1].Bz )
                 else:
-                    # Generic version for arbitrary number of modes
-                    erase_eb_numba( self.Ex, self.Ey, self.Ez,
-                                    self.Bx, self.By, self.Bz, self.Ntot )
-                    for m in range(Nm):
-                        gather_field_numba_linear_one_mode(
-                            self.x, self.y, self.z,
-                            grid[m].invdz, grid[m].zmin, grid[m].Nz,
-                            grid[m].invdr, grid[m].rmin, grid[m].Nr,
-                            grid[m].Er, grid[m].Et, grid[m].Ez,
-                            grid[m].Br, grid[m].Bt, grid[m].Bz, m,
-                            self.Ex, self.Ey, self.Ez,
-                            self.Bx, self.By, self.Bz
-                        )
-
+                    raise NotImplementedError( "Lightweight species routines "
+                                               "for arbitrary modes number are "
+                                               "not yet implemented." )
             elif self.particle_shape == 'cubic':
                 # Divide particles into chunks (each chunk is handled by a
                 # different thread) and return the indices that bound chunks
@@ -1192,19 +1158,9 @@ class Particles(object) :
                          grid[1].Br, grid[1].Bt, grid[1].Bz,
                          nthreads, ptcl_chunk_indices)
                 else:
-                    # Generic version for arbitrary number of modes
-                    erase_eb_numba( self.Ex, self.Ey, self.Ez,
-                                    self.Bx, self.By, self.Bz, self.Ntot )
-                    for m in range(Nm):
-                        gather_field_numba_cubic_one_mode(
-                            self.x, self.y, self.z,
-                            grid[m].invdz, grid[m].zmin, grid[m].Nz,
-                            grid[m].invdr, grid[m].rmin, grid[m].Nr,
-                            grid[m].Er, grid[m].Et, grid[m].Ez,
-                            grid[m].Br, grid[m].Bt, grid[m].Bz, m,
-                            self.Ex, self.Ey, self.Ez,
-                            self.Bx, self.By, self.Bz,
-                            nthreads, ptcl_chunk_indices )
+                    raise NotImplementedError( "Lightweight species routines "
+                                               "for arbitrary modes number are "
+                                               "not yet implemented." )
             else:
                 raise ValueError("`particle_shape` should be either \
                                   'linear' or 'cubic' \
