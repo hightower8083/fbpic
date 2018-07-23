@@ -9,6 +9,7 @@ case of lightweight electrons
 Apart from synthactic, this file is very close to cuda_methods.py
 """
 import numba
+from numba import int64
 from scipy.constants import c, e
 import math
 import numpy as np
