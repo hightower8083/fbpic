@@ -86,9 +86,10 @@ class DensityProfileFromPolarGrid(DensityProfile):
     Class that calculates the transvers density profile
     from the provided polar grid (2D array+axis).
 
-    This also class applies the truncation of the azimuthal spectrum,
-    and should be used with the same of lower number of modes as
-    in the simulation.
+    This method also applies the truncation of the azimuthal spectrum,
+    to a given number `Nm_trunc`. Practically, and depending on the
+    degree of asymmetry one try `2*Nm < Nm_trunc < 3*Nm`, and decrease
+    in case of instability (for boosted-frame simulations).
     """
     def __init__(self, val, r_axis, Nm ):
         """ 
@@ -149,9 +150,12 @@ class DensityProfileFromPolarGrid(DensityProfile):
 
 
 class Interpolant1D:
+    """Utility class to create lists of interpolants"""
     def __init__(self, coord, value):
+        """Initialized with coordinates and values arrays"""
         self.coord = coord
         self.value = value
     def __call__(self, coord_p):
+        """Called with the coordinate"""
         value_p = np.interp(coord_p, self.coord, self.value )
         return value_p
