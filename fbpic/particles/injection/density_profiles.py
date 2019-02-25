@@ -12,7 +12,7 @@ class DensityProfile( object ):
     using the overloaded + operator.
     """
     def __init__( self ):
-        """
+        """ 
         Initialize the density profile.
         (Each subclass should call this method at initialization.)
         
@@ -30,7 +30,7 @@ class DensityProfile( object ):
         
 
     def __call__( self, coords ):
-        """
+        """ 
         Return the density value.
         
         Parameters
@@ -56,7 +56,7 @@ class DensityProfile( object ):
 
 
 class SummedDesnityProfile( DensityProfile ):
-    """
+    """ 
     Class that represents the sum of two instances of LaserProfile
     """
     def __init__( self, profile1, profile2 ):
@@ -82,7 +82,7 @@ class SummedDesnityProfile( DensityProfile ):
 
 
 class DensityProfileFromPolarGrid(DensityProfile):
-    """
+    """ 
     Class that calculates the transvers density profile 
     from the provided polar grid (2D array+axis).
     
@@ -104,16 +104,16 @@ class DensityProfileFromPolarGrid(DensityProfile):
             Number of modes to retain in the interpolation
 
         """
-        self.arg_str = ["r", "th", "z"]
+        self.arg_str = ["z", "r", "th"]
         self._modes = np.arange(Nm)
         self._Nm = Nm
         self._fft_norm = 1./val.shape[0]
         self._rfft = np.fft.rfft(val, axis=0)
         self._r = r_axis
         
-    def __call__(self, r, th, z):
+    def __call__(self, z, r, th):
         
-        """
+        """ 
         Return the density value
         
         Parameters
