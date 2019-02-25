@@ -15,8 +15,8 @@ class DensityProfile( object ):
         """ 
         Initialize the density profile.
         (Each subclass should call this method at initialization.)
-        
-        Note: 
+
+        Note:
         -----------
         Here we also register an empty argument string list `arg_str`. This list 
         should contain the strings representing the coordinates required for the 
@@ -85,14 +85,14 @@ class DensityProfileFromPolarGrid(DensityProfile):
     """ 
     Class that calculates the transvers density profile 
     from the provided polar grid (2D array+axis).
-    
+
     This also class applies the truncation of the azimuthal spectrum, 
     and should be used with the same of lower number of modes as
     in the simulation.
-    """    
+    """
     def __init__(self, val, r_axis, Nm ):
-        """
-        Initialize the profile object. 
+        """ 
+        Initialize the profile object.
 
         Parameters
         -----------
@@ -110,17 +110,17 @@ class DensityProfileFromPolarGrid(DensityProfile):
         self._fft_norm = 1./val.shape[0]
         self._rfft = np.fft.rfft(val, axis=0)
         self._r = r_axis
-        
+
     def __call__(self, z, r, th):
-        
+
         """ 
         Return the density value
-        
+
         Parameters
         -----------
         r, th, z: ndarrays (meters, radians, meters)
             The positions at which to calculate the profile
-            
+
         Returns:
         --------
         vals: ndarray
@@ -128,11 +128,11 @@ class DensityProfileFromPolarGrid(DensityProfile):
         """
         vals = np.zeros_like(r)
         harmonics_p = np.zeros(self._Nm, dtype=np.complex)
-        
+
         for ip in np.arange(vals.size):
             for M in self._modes:
                 harmonics_p[M] = np.interp(r[ip], self._r, self._rfft[M]*self._fft_norm )
-                
+
             harmonics_p[1:] *= 2.0 ## 0-th mode has no c.c. counter-term
             exp_vals = np.exp( 1.j* self._modes * th[ip] )
             vals[ip] = (harmonics_p*exp_vals).sum().real

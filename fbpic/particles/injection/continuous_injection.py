@@ -8,6 +8,14 @@ It defines a class for continuous particle injection with a moving window.
 import warnings
 import numpy as np
 from scipy.constants import c
+import sys, inspect
+
+# convenience method retrieve arguments number of a function
+if sys.version_info[0] < 3:
+    get_args_len = lambda fu: len(inspect.getargspec(fu)[0])
+else:
+    get_args_len = lambda fu: len(inspect.signature(fu).parameters)
+
 
 class ContinuousInjector( object ):
     """
@@ -168,11 +176,12 @@ class ContinuousInjector( object ):
         # Create a temporary density function that takes into
         # account the fact that the plasma has moved
         if self.dens_func is not None:
-            if type(dens_func) is function:
+            dens_func_dim = get_args_len(self.dens_func)
+            if dens_func_dim==2:
                 def dens_func( z, r ):
                     return( self.dens_func( z-self.v_end_plasma*time, r ) )
             else:
-                def dens_func( r, th, z ):
+                def dens_func( z, r, th ):
                     return( self.dens_func( z-self.v_end_plasma*time, r, th ) )
         else:
             dens_func = None
@@ -237,7 +246,8 @@ def generate_evenly_spaced( Npz, zmin, zmax, Npr, rmin, rmax,
         w = n * r * dtheta*dr*dz
         # Modulate it by the density profile
         if dens_func is not None :
-            if type(dens_func) is function:
+            dens_func_dim = get_args_len(dens_func)
+            if dens_func_dim==2:
                 w *= dens_func( z, r )
             else:
                 w *= dens_func( z, r, th )
