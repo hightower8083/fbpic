@@ -168,8 +168,12 @@ class ContinuousInjector( object ):
         # Create a temporary density function that takes into
         # account the fact that the plasma has moved
         if self.dens_func is not None:
-            def dens_func( z, r ):
-                return( self.dens_func( z-self.v_end_plasma*time, r ) )
+            if type(dens_func) is function:
+                def dens_func( z, r ):
+                    return( self.dens_func( z-self.v_end_plasma*time, r ) )
+            else:
+                def dens_func( r, th, z ):
+                    return( self.dens_func( z-self.v_end_plasma*time, r, th ) )
         else:
             dens_func = None
 
@@ -224,15 +228,19 @@ def generate_evenly_spaced( Npz, zmin, zmax, Npr, rmin, rmax,
         unalign_angles( thetap, Npz, Npr, method='random' )
         # Flatten them (This performs a memory copy)
         r = rp.flatten()
-        x = r * np.cos( thetap.flatten() )
-        y = r * np.sin( thetap.flatten() )
+        th = thetap.flatten()
+        x = r * np.cos( th )
+        y = r * np.sin( th )
         z = zp.flatten()
         # Get the weights (i.e. charge of each macroparticle), which
         # are equal to the density times the volume r d\theta dr dz
         w = n * r * dtheta*dr*dz
         # Modulate it by the density profile
         if dens_func is not None :
-            w *= dens_func( z, r )
+            if type(dens_func) is function:
+                w *= dens_func( z, r )
+            else:
+                w *= dens_func( z, r, th )
 
         # Select the particles that have a non-zero weight
         selected = (w > 0)
