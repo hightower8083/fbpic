@@ -21,18 +21,18 @@ class DensityProfile( object ):
         Here we also register an empty argument string list `arg_str`. This list 
         should contain the strings representing the coordinates required for the 
         profile function evaluation, e.g. `["x", "y", "z"]` or `["r", "z"]`.
-        
+
         In FBPIC, the available strings should be defined as a dictionary,
         ```agrDict = { "x": x, "y": y, "z": z, "th": theta, "r": r}```
-        
+
         """
         self.arg_str = []
-        
+
 
     def __call__( self, coords ):
         """ 
         Return the density value.
-        
+
         Parameters
         -----------
         coords: tuple of ndarrays (meters)
@@ -83,10 +83,10 @@ class SummedDesnityProfile( DensityProfile ):
 
 class DensityProfileFromPolarGrid(DensityProfile):
     """ 
-    Class that calculates the transvers density profile 
+    Class that calculates the transvers density profile
     from the provided polar grid (2D array+axis).
 
-    This also class applies the truncation of the azimuthal spectrum, 
+    This also class applies the truncation of the azimuthal spectrum,
     and should be used with the same of lower number of modes as
     in the simulation.
     """
@@ -111,6 +111,11 @@ class DensityProfileFromPolarGrid(DensityProfile):
         self._rfft = np.fft.rfft(val, axis=0)
         self._r = r_axis
 
+        self._harmonics = []
+        for M in self._modes:
+            self._harmonics.append( Interpolant1D(self._r,
+              self._rfft[M]*self._fft_norm) )
+
     def __call__(self, z, r, th):
 
         """ 
@@ -124,17 +129,29 @@ class DensityProfileFromPolarGrid(DensityProfile):
         Returns:
         --------
         vals: ndarray
-            Array of the same shape as r, th, z, containing the weighting density
+            Array of the same shape as r, th, z, containing
+            the weighting density
         """
-        vals = np.zeros_like(r)
-        harmonics_p = np.zeros(self._Nm, dtype=np.complex)
 
-        for ip in np.arange(vals.size):
-            for M in self._modes:
-                harmonics_p[M] = np.interp(r[ip], self._r, self._rfft[M]*self._fft_norm )
+        Np = r.size
+        vals = np.zeros((Np,), dtype=np.double)
 
-            harmonics_p[1:] *= 2.0 ## 0-th mode has no c.c. counter-term
-            exp_vals = np.exp( 1.j* self._modes * th[ip] )
-            vals[ip] = (harmonics_p*exp_vals).sum().real
+        exp_vals = np.exp( 1.j* self._modes[:,None] * th[None,:] )
+
+        harmonics_p = np.zeros((self._Nm, Np), dtype=np.complex)
+        for M in self._modes:
+            harmonics_p[M,:] = self._harmonics[M](r)
+
+        harmonics_p[1:] *= 2.0
+        vals = (harmonics_p*exp_vals).sum(0).real
 
         return vals
+
+
+class Interpolant1D:
+    def __init__(self, coord, value):
+        self.coord = coord
+        self.value = value
+    def __call__(self, coord_p):
+        value_p = np.interp(coord_p, self.coord, self.value )
+        return value_p
