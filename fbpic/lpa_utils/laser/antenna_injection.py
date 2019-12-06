@@ -49,7 +49,7 @@ class LaserAntenna( object ):
     rest of the simulation uses cubic shape factors.)
     """
     def __init__( self, laser_profile, z0_antenna, v_antenna,
-                    dr_grid, Nr_grid, Nm, boost, npr=2, epsilon=0.01 ):
+                    dz_grid, dr_grid, Nr_grid, Nm, boost, npr=2, epsilon=0.01 ):
         """
         Initialize a LaserAntenna object (see class docstring for more info)
 
@@ -65,8 +65,11 @@ class LaserAntenna( object ):
             Only used for the ``antenna`` method: velocity of the antenna
             (in the lab frame)
 
+        dz_grid: float (m)
+           Resolution in z direction of the grid which contains the fields 
+
         dr_grid: float (m)
-           Resolution of the grid which contains the fields
+           Resolution  in r direction of the grid which contains the fields
 
         Nr_grid: int
            Number of gridpoints radially
@@ -136,6 +139,16 @@ class LaserAntenna( object ):
         self.baseline_x = self.baseline_r * np.cos( theta0 )
         self.baseline_y = self.baseline_r * np.sin( theta0 )
         self.baseline_z = z0_antenna * np.ones( Ntot )
+
+        self.baseline_x_orig, self.baseline_y_orig, self.baseline_z_orig = \
+            self.baseline_x, self.baseline_y, self.baseline_z
+
+        tilt = 10 * np.pi/180
+        x_shift = 0.0
+        self.baseline_x = np.cos(tilt)*self.baseline_x + np.sin(tilt)*self.baseline_z
+        self.baseline_z = np.cos(tilt)*self.baseline_z - np.sin(tilt)*self.baseline_x
+
+        self.baseline_x += x_shift
         # NB: all virtual particles have the same baseline_z, but for
         # convenient reuse of other functions, baseline_z is still an array
         self.w = alpha_weights * self.baseline_r / dr_grid
@@ -160,13 +173,15 @@ class LaserAntenna( object ):
         # (gets updated by `update_current_rank`)
         self.deposit_on_this_rank = False
 
+        Nz_buff = int(np.ceil(self.baseline_z.ptp()/dz_grid)) + 2
+        self.Nz_buff = Nz_buff
         # Initialize small-size buffers where the particles charge and currents
         # will be deposited before being added to the regular, large-size array
         # (esp. useful when running on GPU, for memory transfer)
-        self.rho_buffer = np.empty( (Nm, 2, Nr_grid), dtype='complex' )
-        self.Jr_buffer = np.empty( (Nm, 2, Nr_grid), dtype='complex' )
-        self.Jt_buffer = np.empty( (Nm, 2, Nr_grid), dtype='complex' )
-        self.Jz_buffer = np.empty( (Nm, 2, Nr_grid), dtype='complex' )
+        self.rho_buffer = np.empty( (Nm, Nz_buff, Nr_grid), dtype='complex' )
+        self.Jr_buffer = np.empty( (Nm, Nz_buff, Nr_grid), dtype='complex' )
+        self.Jt_buffer = np.empty( (Nm, Nz_buff, Nr_grid), dtype='complex' )
+        self.Jz_buffer = np.empty( (Nm, Nz_buff, Nr_grid), dtype='complex' )
         if cuda_installed:
             self.d_rho_buffer = cuda.device_array_like( self.rho_buffer )
             self.d_Jr_buffer = cuda.device_array_like( self.Jr_buffer )
@@ -239,6 +254,8 @@ class LaserAntenna( object ):
         """
         # When running in a boosted frame, convert the position and time at
         # which to find the laser amplitude.
+
+
         if self.boost is not None:
             boost = self.boost
             inv_c = 1./c
@@ -252,8 +269,11 @@ class LaserAntenna( object ):
         # Eu is the amplitude along the polarization direction
         # Note that we neglect the (small) excursion of the particles when
         # calculating the electric field on the particles.
+#        Ex, Ey = self.laser_profile.E_field(
+#            self.baseline_x, self.baseline_y, zlab, tlab )
+
         Ex, Ey = self.laser_profile.E_field(
-            self.baseline_x, self.baseline_y, zlab, tlab )
+            self.baseline_x_orig, self.baseline_y_orig, self.baseline_z_orig, tlab )
 
         # Calculate the corresponding velocity. This takes into account
         # lab-frame to boosted-frame conversion, through a modification
@@ -304,10 +324,6 @@ class LaserAntenna( object ):
         # to the large-size arrays rho, Jr, Jt, Jz
         iz_min = iz.min()
         iz_max = iz.max()
-        # Since linear shape are used, and since the virtual particles all
-        # have the same z position, iz_max is necessarily equal to iz_min+1
-        # This is a sanity check, to avoid out-of-bound access later on.
-        assert iz_max == iz_min+1
         # Substract from the array of indices in order to find the particle
         # index within the small-size buffers
         iz = iz - iz_min
@@ -438,10 +454,11 @@ class LaserAntenna( object ):
             Contains the full-size array rho
         """
         Nm = len(grid)
+        Nz_buff = self.Nz_buff
         if type(grid[0].rho) is np.ndarray:
             # The large-size array rho is on the CPU
             for m in range( Nm ):
-                grid[m].rho[ iz_min:iz_min+2 ] += self.rho_buffer[m]
+                grid[m].rho[ iz_min:iz_min+Nz_buff ] += self.rho_buffer[m]
         else:
             # The large-size array rho is on the GPU
             # Copy the small-size buffer to the GPU
@@ -468,12 +485,13 @@ class LaserAntenna( object ):
             Contains the full-size array Jr, Jt, Jz
         """
         Nm = len(grid)
+        Nz_buff = self.Nz_buff
         if type(grid[0].Jr) is np.ndarray:
             # The large-size arrays for J are on the CPU
             for m in range( Nm ):
-                grid[m].Jr[ iz_min:iz_min+2 ] += self.Jr_buffer[m]
-                grid[m].Jt[ iz_min:iz_min+2 ] += self.Jt_buffer[m]
-                grid[m].Jz[ iz_min:iz_min+2 ] += self.Jz_buffer[m]
+                grid[m].Jr[ iz_min:iz_min+Nz_buff ] += self.Jr_buffer[m]
+                grid[m].Jt[ iz_min:iz_min+Nz_buff ] += self.Jt_buffer[m]
+                grid[m].Jz[ iz_min:iz_min+Nz_buff ] += self.Jz_buffer[m]
         else:
             # The large-size arrays for J are on the GPU
             # Copy the small-size buffers to the GPU
@@ -501,8 +519,8 @@ if cuda_installed:
             The index of the lowest cell in z that surrounds the antenna
 
         rho_buffer: 3darray of complexs
-            Array of shape (Nm, 2, Nr) that stores the values of rho
-            in the 2 cells that surround the antenna (for each mode).
+            Array of shape (Nm, Nz_buff, Nr) that stores the values of rho
+            in the Nz_buff cells that surround the antenna (for each mode).
 
         rho: 2darray of complexs
             Array of shape (Nz, Nr) that contains rho in the mode m
@@ -512,11 +530,12 @@ if cuda_installed:
         """
         # Use one thread per radial cell
         ir = cuda.grid(1)
+        Nz_buff = rho.shape[0]
 
         # Add the values
         if ir < rho.shape[1]:
-            rho[iz_min, ir] += rho_buffer[m, 0, ir]
-            rho[iz_min+1, ir] += rho_buffer[m, 1, ir]
+            for iz in range(Nz_buff):
+                rho[iz_min+iz, ir] += rho_buffer[m, iz, ir]
 
     @cuda.jit()
     def add_J_to_gpu_array( iz_min, Jr_buffer, Jt_buffer,
@@ -541,14 +560,10 @@ if cuda_installed:
         """
         # Use one thread per radial cell
         ir = cuda.grid(1)
-
+        Nz_buff = Jr.shape[0]
         # Add the values
         if ir < Jr.shape[1]:
-            Jr[iz_min, ir] += Jr_buffer[m, 0, ir]
-            Jr[iz_min+1, ir] += Jr_buffer[m, 1, ir]
-
-            Jt[iz_min, ir] += Jt_buffer[m, 0, ir]
-            Jt[iz_min+1, ir] += Jt_buffer[m, 1, ir]
-
-            Jz[iz_min, ir] += Jz_buffer[m, 0, ir]
-            Jz[iz_min+1, ir] += Jz_buffer[m, 1, ir]
+            for iz in range(Nz_buff):
+                Jr[iz_min+iz, ir] += Jr_buffer[m, iz, ir]
+                Jt[iz_min+iz, ir] += Jt_buffer[m, iz, ir]
+                Jz[iz_min+iz, ir] += Jz_buffer[m, iz, ir]

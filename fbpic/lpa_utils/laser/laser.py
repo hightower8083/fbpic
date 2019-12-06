@@ -82,12 +82,13 @@ def add_laser_pulse( sim, laser_profile, gamma_boost=None,
         # Add a laser antenna to the simulation object
         if z0_antenna is None:
             raise ValueError('You need to provide `z0_antenna`.')
+        dz = sim.fld.interp[0].dz
         dr = sim.fld.interp[0].dr
         Nr = sim.fld.interp[0].Nr
         Nm = sim.fld.Nm
         sim.laser_antennas.append(
             LaserAntenna( laser_profile, z0_antenna, v_antenna,
-                            dr, Nr, Nm, boost ) )
+                            dz, dr, Nr, Nm, boost ) )
 
     else:
         raise ValueError('Unknown laser method: %s' %method)
