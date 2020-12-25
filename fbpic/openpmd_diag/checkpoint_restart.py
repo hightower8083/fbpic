@@ -138,7 +138,7 @@ def restart_from_checkpoint( sim, iteration=None,
     # Choose the name of the directory from which to restart:
     # one directory per processor
     data_dir = os.path.join( checkpoint_dir, 'proc%d/hdf5' %comm.rank )
-    ts = OpenPMDTimeSeries( data_dir )
+    ts = OpenPMDTimeSeries( data_dir, backend='h5py' )
     # Select the iteration, and its index
     if iteration is None:
         iteration = ts.iterations[-1]
